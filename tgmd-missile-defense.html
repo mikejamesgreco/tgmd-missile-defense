@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>TGMD - Missile Defense v0006</title>
+<title>TGMD - Missile Defense v0010</title>
 <meta name="description" content="TGMD - The Greco Missile Defense. A single-file, local-first arcade defense game with optional locally loaded face-missiles.">
 <style>
   *{box-sizing:border-box}
@@ -198,7 +198,7 @@
   </main>
 
   <footer>
-    <span>© <span id="year"></span> mikejamesgreco.me LLC. All rights reserved. v0006</span>
+    <span>© <span id="year"></span> mikejamesgreco.me LLC. All rights reserved. v0010</span>
     <span>TGMD - The Greco Missile Defense</span>
   </footer>
 </div>
@@ -269,6 +269,25 @@ function sayOuch(){
   }catch{}
 }
 
+function sayGameOver(){
+  try{
+    if(!('speechSynthesis' in window))return;
+    window.speechSynthesis.cancel();
+    const u=new SpeechSynthesisUtterance('All your faces are belong to us.');
+    u.volume=.70;
+    u.rate=.68;
+    u.pitch=.05;
+    // Prefer a lower-pitched English system voice when one is available.
+    const voices=window.speechSynthesis.getVoices();
+    const lowVoice=
+      voices.find(v=>/microsoft david/i.test(v.name)) ||
+      voices.find(v=>/microsoft mark/i.test(v.name)) ||
+      voices.find(v=>/male/i.test(v.name));
+    if(lowVoice)u.voice=lowVoice;
+    window.speechSynthesis.speak(u);
+  }catch{}
+}
+
 let state;
 let faces = [];
 let selectedFace = -1;
@@ -325,7 +344,7 @@ function gameOver(){
     localStorage.setItem('tgmd.highScore.v1', String(state.score));
   }
   updateHud();
-  ui.message.innerHTML=`<h2>THE FACE HAS PREVAILED.</h2><p>Final score: <b>${state.score.toLocaleString()}</b> · Wave ${state.wave}</p><p>Press Start Game to try again.</p>`;
+  ui.message.innerHTML=`<h2>ALL YOUR FACES ARE BELONG TO US</h2><p>Final score: <b>${state.score.toLocaleString()}</b> · Wave ${state.wave}</p><p>Press Start Game to try again.</p>`;sayGameOver();
   ui.message.classList.add('show');
   tone(90,.45,'sawtooth',.04);
 }
