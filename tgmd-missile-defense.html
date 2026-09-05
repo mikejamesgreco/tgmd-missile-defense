@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>TGMD - Missile Defense v0010</title>
+<title>TGMD - Missile Defense v0011</title>
 <meta name="description" content="TGMD - The Greco Missile Defense. A single-file, local-first arcade defense game with optional locally loaded face-missiles.">
 <style>
   *{box-sizing:border-box}
@@ -22,6 +22,8 @@
   .brand{display:flex;flex-direction:column;gap:2px}
   .brand strong{font-size:22px;line-height:1.02;letter-spacing:-.03em}
   .brand small{font-size:8px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:#64748b;animation:blink 2.2s ease-in-out infinite}
+  .brand .docs-link{font-size:9px;font-weight:700;color:#64748b;text-decoration:none;margin-top:1px}
+  .brand .docs-link:hover{color:var(--blue);text-decoration:underline}
   @keyframes blink{0%,100%{opacity:.28}50%{opacity:.95}}
   .controls{display:flex;align-items:end;gap:8px;flex-wrap:wrap}
   .group{display:flex;align-items:center;gap:6px;padding:5px 6px;background:#fff;border:1px solid var(--line);border-radius:8px}
@@ -126,6 +128,7 @@
     <div class="brand">
       <strong>TGMD - Missile Defense</strong>
       <small>The Greco Missile Defense</small>
+      <a class="docs-link" href="https://github.com/mikejamesgreco/tgmd-missile-defense#readme" target="_blank" rel="noopener noreferrer">GitHub / Docs ↗</a>
     </div>
     <div class="controls">
       <div class="group"><label>Game</label><button class="primary" id="startBtn">Start Game</button><button id="pauseBtn">Pause</button></div>
@@ -198,8 +201,8 @@
   </main>
 
   <footer>
-    <span>© <span id="year"></span> mikejamesgreco.me LLC. All rights reserved. v0010</span>
-    <span>TGMD - The Greco Missile Defense</span>
+    <span>© <span id="year"></span> mikejamesgreco.me LLC. All rights reserved. v0011</span>
+    <span><a href="https://github.com/mikejamesgreco/tgmd-missile-defense#readme" target="_blank" rel="noopener noreferrer">GitHub / README ↗</a></span>
   </footer>
 </div>
 
