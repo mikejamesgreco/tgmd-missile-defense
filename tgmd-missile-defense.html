@@ -1,0 +1,777 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>TGMD - Missile Defense v0006</title>
+<meta name="description" content="TGMD - The Greco Missile Defense. A single-file, local-first arcade defense game with optional locally loaded face-missiles.">
+<style>
+  *{box-sizing:border-box}
+  :root{
+    --bg:#f4f6f8;--panel:#fff;--text:#1f2937;--muted:#64748b;--line:#d9e1ea;
+    --blue:#2563eb;--blue2:#1d4ed8;--soft:#f8fafc;--danger:#b91c1c;--good:#15803d;
+  }
+  html,body{margin:0;min-height:100%;font-family:Arial,Helvetica,sans-serif;background:var(--bg);color:var(--text)}
+  body{padding:18px;overflow-y:auto}
+  .app{max-width:1450px;margin:0 auto;min-height:calc(100vh - 36px);display:flex;flex-direction:column;gap:14px}
+  .topbar{
+    display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap;
+    padding:12px 14px;background:linear-gradient(#fff,#fbfcfe);border:1px solid var(--line);
+    border-radius:10px;box-shadow:0 2px 8px rgba(15,23,42,.05)
+  }
+  .brand{display:flex;flex-direction:column;gap:2px}
+  .brand strong{font-size:22px;line-height:1.02;letter-spacing:-.03em}
+  .brand small{font-size:8px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:#64748b;animation:blink 2.2s ease-in-out infinite}
+  @keyframes blink{0%,100%{opacity:.28}50%{opacity:.95}}
+  .controls{display:flex;align-items:end;gap:8px;flex-wrap:wrap}
+  .group{display:flex;align-items:center;gap:6px;padding:5px 6px;background:#fff;border:1px solid var(--line);border-radius:8px}
+  .group label{font-size:9px;text-transform:uppercase;letter-spacing:.08em;font-weight:800;color:#64748b}
+  button,.filebtn{
+    border:1px solid #cbd5e1;background:#fff;color:#334155;border-radius:7px;padding:8px 10px;
+    font:700 12px Arial,Helvetica,sans-serif;cursor:pointer;text-decoration:none;display:inline-flex;align-items:center;gap:6px
+  }
+  button:hover,.filebtn:hover{border-color:#94a3b8}
+  button.primary{background:var(--blue);border-color:var(--blue);color:#fff}
+  button.primary:hover{background:var(--blue2)}
+  button.danger{color:var(--danger)}
+  button:disabled{opacity:.45;cursor:not-allowed}
+  input[type=file]{display:none}
+  .layout{display:grid;grid-template-columns:minmax(0,1fr) 300px;gap:14px;align-items:start}
+  .gamecard,.sidecard{
+    background:#fff;border:1px solid var(--line);border-radius:10px;box-shadow:0 4px 15px rgba(15,23,42,.04)
+  }
+  .gamecard{padding:10px}
+  .hud{
+    display:grid;grid-template-columns:repeat(6,minmax(80px,1fr));gap:7px;margin-bottom:8px
+  }
+  .stat{background:var(--soft);border:1px solid #e2e8f0;border-radius:8px;padding:7px 8px}
+  .stat b{display:block;font-size:15px}
+  .stat span{font-size:9px;text-transform:uppercase;letter-spacing:.08em;color:#64748b;font-weight:800}
+  .canvas-wrap{position:relative}
+  canvas{
+    display:block;width:100%;height:auto;aspect-ratio:16/9;background:#050914;border-radius:8px;border:1px solid #172033;
+    touch-action:none;cursor:crosshair
+  }
+  .overlay{
+    position:absolute;inset:0;display:flex;align-items:center;justify-content:center;pointer-events:none;
+  }
+  .message{
+    display:none;max-width:520px;text-align:center;background:rgba(2,6,23,.86);color:#fff;border:1px solid rgba(148,163,184,.35);
+    border-radius:12px;padding:18px 22px;backdrop-filter:blur(3px)
+  }
+  .message.show{display:block}
+  .message h2{margin:0 0 8px;font-size:26px}
+  .message p{margin:4px 0;color:#cbd5e1;font-size:13px}
+  .side{display:flex;flex-direction:column;gap:14px}
+  .sidecard{padding:14px}
+  .sidecard h3{margin:0 0 10px;font-size:15px}
+  .sidecard p,.hint{font-size:12px;color:#64748b;line-height:1.45}
+  .setting{margin:11px 0}
+  .setting-row{display:flex;justify-content:space-between;gap:10px;align-items:center;font-size:12px;font-weight:700}
+  input[type=range]{width:100%}
+  .faces{display:grid;grid-template-columns:repeat(3,1fr);gap:7px;margin-top:9px}
+  .face{
+    position:relative;aspect-ratio:1;background:#eef2f7;border:1px solid #dbe2ea;border-radius:50%;overflow:hidden
+  }
+  .face img{width:100%;height:100%;object-fit:cover;display:block}
+  .face canvas{
+    display:block;width:100%;height:100%;aspect-ratio:1/1;
+    border:0;border-radius:0;background:transparent;cursor:pointer
+  }
+  .face button{
+    position:absolute;right:-2px;top:-2px;width:22px;height:22px;padding:0;justify-content:center;border-radius:50%;
+    background:#fff;color:#991b1b;font-size:11px
+  }
+  .empty-face{display:flex;align-items:center;justify-content:center;color:#94a3b8;font-size:10px;text-align:center;padding:8px}
+  .cropbox{display:none;margin-top:10px;padding-top:10px;border-top:1px solid #e2e8f0}
+  .cropbox.show{display:block}
+  .crop-editor{
+    position:relative;width:100%;aspect-ratio:1;background:#0f172a;border:1px solid #cbd5e1;
+    border-radius:9px;overflow:hidden;touch-action:none;cursor:grab
+  }
+  .crop-editor:active{cursor:grabbing}
+  .crop-editor canvas{width:100%;height:100%;aspect-ratio:1;border:0;border-radius:0;cursor:inherit;background:#0f172a}
+  .crop-note{font-size:11px;color:#64748b;line-height:1.35;margin-top:7px}
+  .crop-actions{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
+  .crop-actions button{flex:1;justify-content:center;min-width:84px}
+  .legend{display:grid;grid-template-columns:1fr 1fr;gap:7px;font-size:11px;color:#64748b}
+  .legend div{padding:7px;background:var(--soft);border-radius:7px;border:1px solid #e2e8f0}
+  .helpback{
+    position:fixed;inset:0;background:rgba(15,23,42,.5);display:none;align-items:center;justify-content:center;padding:18px;z-index:20
+  }
+  .helpback.show{display:flex}
+  .modal{width:min(760px,96vw);max-height:88vh;background:#fff;border-radius:12px;border:1px solid var(--line);display:flex;flex-direction:column;overflow:hidden}
+  .modalhead{padding:14px 16px;border-bottom:1px solid var(--line);font-weight:800}
+  .modalbody{padding:16px;overflow:auto;font-size:13px;color:#475569;line-height:1.5}
+  .modalbody h3{color:#1f2937;margin:18px 0 6px}
+  .modalactions{padding:10px 14px;border-top:1px solid var(--line);display:flex;justify-content:flex-end}
+  footer{
+    margin-top:auto;padding:10px 2px 2px;color:#64748b;font-size:10px;display:flex;justify-content:space-between;gap:14px;flex-wrap:wrap
+  }
+  footer a{color:#64748b;text-decoration:none;font-weight:700}
+  footer a:hover{color:var(--blue);text-decoration:underline}
+  @media(max-width:900px){
+    .layout{grid-template-columns:1fr}.side{grid-template-columns:1fr 1fr;display:grid}
+    .hud{grid-template-columns:repeat(3,1fr)}
+  }
+  @media(max-width:600px){
+    body{padding:8px}.side{display:flex}.hud{grid-template-columns:repeat(2,1fr)}
+    .brand strong{font-size:19px}.controls{width:100%}.group{flex-wrap:wrap}
+  }
+</style>
+</head>
+<body>
+<div class="app">
+  <header class="topbar">
+    <div class="brand">
+      <strong>TGMD - Missile Defense</strong>
+      <small>The Greco Missile Defense</small>
+    </div>
+    <div class="controls">
+      <div class="group"><label>Game</label><button class="primary" id="startBtn">Start Game</button><button id="pauseBtn">Pause</button></div>
+      <div class="group"><label>Faces</label><label class="filebtn" for="faceInput">Load Images</label><input id="faceInput" type="file" accept="image/*" multiple></div>
+      <div class="group"><button id="helpBtn">Help</button></div>
+    </div>
+  </header>
+
+  <main class="layout">
+    <section class="gamecard">
+      <div class="hud">
+        <div class="stat"><span>Score</span><b id="score">0</b></div>
+        <div class="stat"><span>High Score</span><b id="highScore">0</b></div>
+        <div class="stat"><span>Wave</span><b id="wave">1</b></div>
+        <div class="stat"><span>Ammo</span><b id="ammo">30</b></div>
+        <div class="stat"><span>Cities</span><b id="cities">6</b></div>
+        <div class="stat"><span>Threats</span><b id="threats">0</b></div>
+      </div>
+      <div class="canvas-wrap">
+        <canvas id="game" width="1280" height="720" aria-label="TGMD Missile Defense game canvas"></canvas>
+        <div class="overlay"><div class="message show" id="message">
+          <h2>TGMD - Missile Defense</h2>
+          <p>Protect the cities. Click or tap the sky to launch an interceptor.</p>
+          <p>Load local images if you want the incoming missiles to get a little more personal.</p>
+        </div></div>
+      </div>
+    </section>
+
+    <aside class="side">
+      <section class="sidecard">
+        <h3>Face Missiles</h3>
+        <p>Images stay local to this browser session. Load one or several; incoming missiles will randomly use them.</p>
+        <div class="faces" id="faces"><div class="face empty-face">No images loaded</div></div>
+        <div class="cropbox" id="cropBox">
+          <div class="crop-editor" id="cropEditor">
+            <canvas id="cropCanvas" width="480" height="480" aria-label="Circular image crop editor"></canvas>
+          </div>
+          <div class="crop-note">Drag the image under the circle to position the face. Use Zoom to size the face inside the missile head.</div>
+          <div class="setting">
+            <div class="setting-row"><span>Zoom</span><span id="cropZoomVal">100%</span></div>
+            <input type="range" id="cropZoom" min="100" max="400" value="100">
+          </div>
+          <div class="crop-actions">
+            <button type="button" id="cropReset">Reset Crop</button>
+            <button type="button" class="primary" id="cropDone">Done</button>
+          </div>
+        </div>
+        <div class="setting">
+          <div class="setting-row"><span>Face Size</span><span id="faceSizeVal">100%</span></div>
+          <input type="range" id="faceSize" min="60" max="180" value="100">
+        </div>
+      </section>
+
+      <section class="sidecard">
+        <h3>How to Play</h3>
+        <div class="legend">
+          <div><b>Click / Tap</b><br>Fire interceptor</div>
+          <div><b>Explosion</b><br>Destroys threats</div>
+          <div><b>Chain</b><br>One blast can trigger another</div>
+          <div><b>Ammo</b><br>Limited each wave</div>
+        </div>
+        <p class="hint">Destroy all incoming missiles before they hit your six cities or three interceptor batteries. Surviving cities and unused ammo earn wave bonuses.</p>
+      </section>
+
+      <section class="sidecard">
+        <h3>Local Arcade</h3>
+        <p>No framework, no server, no upload. High score is stored locally in your browser. Loaded images are held only in memory and disappear when the page is closed or reloaded.</p>
+      </section>
+    </aside>
+  </main>
+
+  <footer>
+    <span>© <span id="year"></span> mikejamesgreco.me LLC. All rights reserved. v0006</span>
+    <span>TGMD - The Greco Missile Defense</span>
+  </footer>
+</div>
+
+<div class="helpback" id="helpBack">
+  <div class="modal">
+    <div class="modalhead">TGMD Help</div>
+    <div class="modalbody">
+      <h3>Mission</h3>
+      Protect the cities and interceptor batteries from incoming missiles. Click or tap anywhere in the sky to launch an interceptor toward that location. Incoming missiles carry a visible spark trail, and the interceptor explodes when it arrives, creating an expanding blast radius.
+      <h3>Chain Reactions</h3>
+      A threat destroyed inside an explosion creates a smaller secondary explosion and may give a faint browser-generated "ouch." Those explosions can destroy additional threats and create chains, increasing your score quickly.
+      <h3>Ammo and Waves</h3>
+      You begin each wave with limited interceptor ammunition. The next wave starts after every incoming threat has either been destroyed or reached the ground. Surviving cities and unused ammunition award bonus points. Difficulty increases with each wave.
+      <h3>Face Missiles</h3>
+      Use <b>Load Images</b> to select one or more local images. TGMD randomly places those images on incoming missile heads. Click a loaded image to open the circular crop editor, then drag the photo beneath the circle and use Zoom to frame exactly the face or image area you want on the missile head. The Face Size slider changes the size of the finished circular head during gameplay.
+      <h3>Privacy</h3>
+      Selected images are decoded locally in the browser. TGMD does not upload them or store them in localStorage. Reloading or closing the page removes them from the current session.
+      <h3>Controls</h3>
+      <b>Start Game</b> begins a new game. <b>Pause</b> freezes and resumes play. Mouse and touch input are both supported.
+    </div>
+    <div class="modalactions"><button id="closeHelp">Close</button></div>
+  </div>
+</div>
+
+<script>
+(() => {
+'use strict';
+
+const canvas = document.getElementById('game');
+const ctx = canvas.getContext('2d');
+const W = canvas.width, H = canvas.height;
+const GROUND = 650;
+const START_AMMO = 30;
+const CITY_COUNT = 6;
+const BATTERY_X = [100, W/2, W-100];
+const CITY_X = [220, 360, 500, 780, 920, 1060];
+const MIN_EXPLOSION = 3;
+const MAX_EXPLOSION = 78;
+
+const ui = Object.fromEntries(['score','highScore','wave','ammo','cities','threats','message','startBtn','pauseBtn','faces','faceInput','faceSize','faceSizeVal','cropBox','cropEditor','cropCanvas','cropZoom','cropZoomVal','cropReset','cropDone','helpBack','helpBtn','closeHelp'].map(id => [id, document.getElementById(id)]));
+document.getElementById('year').textContent = new Date().getFullYear();
+
+let audioCtx = null;
+function tone(freq=440,dur=.06,type='sine',gain=.03){
+  try{
+    audioCtx ||= new (window.AudioContext || window.webkitAudioContext)();
+    const o=audioCtx.createOscillator(), g=audioCtx.createGain();
+    o.type=type;o.frequency.value=freq;g.gain.value=gain;
+    o.connect(g);g.connect(audioCtx.destination);o.start();
+    g.gain.exponentialRampToValueAtTime(.0001,audioCtx.currentTime+dur);
+    o.stop(audioCtx.currentTime+dur);
+  }catch{}
+}
+
+let lastOuchAt=0;
+function sayOuch(){
+  try{
+    const now=performance.now();
+    if(now-lastOuchAt<240)return;
+    lastOuchAt=now;
+    if(!('speechSynthesis' in window))return;
+    const u=new SpeechSynthesisUtterance('ouch');
+    u.volume=.16;
+    u.rate=1.45+Math.random()*.18;
+    u.pitch=1.05+Math.random()*.35;
+    window.speechSynthesis.speak(u);
+  }catch{}
+}
+
+let state;
+let faces = [];
+let selectedFace = -1;
+let last = performance.now();
+let raf = 0;
+
+function resetState(){
+  state = {
+    running:false, paused:false, gameOver:false,
+    score:0, wave:1, ammo:START_AMMO,
+    highScore:Number(localStorage.getItem('tgmd.highScore.v1')||0),
+    cities:CITY_X.map((x,i)=>({x,alive:true,i})),
+    batteries:BATTERY_X.map((x,i)=>({x,alive:true,i})),
+    incoming:[], interceptors:[], explosions:[], particles:[],
+    waveSpawned:0, waveTarget:0, nextSpawn:0, betweenWaves:false, waveDelay:0,
+    shake:0
+  };
+  updateHud();
+}
+resetState();
+
+function startGame(){
+  cancelAnimationFrame(raf);
+  resetState();
+  state.running=true;
+  ui.message.classList.remove('show');
+  beginWave();
+  last=performance.now();
+  raf=requestAnimationFrame(loop);
+  tone(440,.08,'square',.025);
+}
+function beginWave(){
+  state.ammo = START_AMMO + Math.min(12,(state.wave-1)*2);
+  state.waveSpawned=0;
+  state.waveTarget=7 + state.wave*3;
+  state.nextSpawn=.35;
+  state.betweenWaves=false;
+  updateHud();
+}
+function nextWave(){
+  const alive=state.cities.filter(c=>c.alive).length;
+  state.score += alive*300 + state.ammo*20;
+  state.wave++;
+  if(state.wave%3===0){
+    const dead=state.cities.find(c=>!c.alive);
+    if(dead) dead.alive=true;
+  }
+  beginWave();
+}
+function gameOver(){
+  state.running=false;state.gameOver=true;
+  if(state.score>state.highScore){
+    state.highScore=state.score;
+    localStorage.setItem('tgmd.highScore.v1', String(state.score));
+  }
+  updateHud();
+  ui.message.innerHTML=`<h2>THE FACE HAS PREVAILED.</h2><p>Final score: <b>${state.score.toLocaleString()}</b> · Wave ${state.wave}</p><p>Press Start Game to try again.</p>`;
+  ui.message.classList.add('show');
+  tone(90,.45,'sawtooth',.04);
+}
+function updateHud(){
+  ui.score.textContent=state.score.toLocaleString();
+  ui.highScore.textContent=state.highScore.toLocaleString();
+  ui.wave.textContent=state.wave;
+  ui.ammo.textContent=state.ammo;
+  ui.cities.textContent=state.cities.filter(c=>c.alive).length;
+  ui.threats.textContent=state.incoming.length;
+  ui.pauseBtn.textContent=state.paused?'Resume':'Pause';
+}
+
+function rand(a,b){return a+Math.random()*(b-a)}
+function pick(arr){return arr[(Math.random()*arr.length)|0]}
+function spawnIncoming(){
+  const targets=[
+    ...state.cities.filter(c=>c.alive).map(c=>({type:'city',x:c.x,index:c.i})),
+    ...state.batteries.filter(b=>b.alive).map(b=>({type:'battery',x:b.x,index:b.i}))
+  ];
+  if(!targets.length){gameOver();return}
+  const target=pick(targets);
+  const sx=rand(30,W-30), sy=-20;
+  const tx=target.x+rand(-20,20), ty=GROUND;
+  const dx=tx-sx,dy=ty-sy,len=Math.hypot(dx,dy);
+  const speed=42 + state.wave*5 + rand(0,22);
+  state.incoming.push({
+    x:sx,y:sy,px:sx,py:sy,vx:dx/len*speed,vy:dy/len*speed,
+    target, faceIndex:faces.length?((Math.random()*faces.length)|0):-1,
+    spin:rand(-.8,.8), angle:0, alive:true, trail:[]
+  });
+  state.waveSpawned++;
+}
+
+function fireAt(x,y){
+  if(!state.running||state.paused||state.ammo<=0||y>=GROUND-12)return;
+  const liveBats=state.batteries.filter(b=>b.alive);
+  if(!liveBats.length)return;
+  const bat=liveBats.reduce((a,b)=>Math.abs(b.x-x)<Math.abs(a.x-x)?b:a);
+  const sx=bat.x,sy=GROUND-12;
+  const dx=x-sx,dy=y-sy,len=Math.hypot(dx,dy)||1;
+  const speed=470;
+  state.interceptors.push({x:sx,y:sy,px:sx,py:sy,vx:dx/len*speed,vy:dy/len*speed,tx:x,ty:y});
+  state.ammo--;
+  tone(260,.035,'square',.02);
+  updateHud();
+}
+function explode(x,y,max=MAX_EXPLOSION,secondary=false){
+  state.explosions.push({x,y,r:MIN_EXPLOSION,max,phase:'grow',age:0,secondary});
+  for(let i=0;i<(secondary?8:14);i++){
+    const a=rand(0,Math.PI*2),s=rand(25,110);
+    state.particles.push({x,y,vx:Math.cos(a)*s,vy:Math.sin(a)*s,life:rand(.2,.6)});
+  }
+  tone(secondary?520:160,secondary?.04:.09,secondary?'triangle':'sawtooth',secondary?.012:.025);
+}
+
+function update(dt){
+  if(!state.running||state.paused)return;
+  if(state.shake>0)state.shake=Math.max(0,state.shake-dt*2.5);
+
+  state.nextSpawn-=dt;
+  if(state.waveSpawned<state.waveTarget && state.nextSpawn<=0){
+    spawnIncoming();
+    state.nextSpawn=Math.max(.18,rand(.45,1.05)-state.wave*.02);
+  }
+
+  for(const m of state.incoming){
+    m.px=m.x;m.py=m.y;m.x+=m.vx*dt;m.y+=m.vy*dt;m.angle+=m.spin*dt;
+
+    // Build a persistent flame/spark trail from the REAR EDGE of the missile head.
+    // Keeping recent rear-edge positions produces a clearly visible tail that
+    // follows the missile path instead of looking like sparks from its center.
+    {
+      const mag=Math.hypot(m.vx,m.vy)||1;
+      const ux=m.vx/mag, uy=m.vy/mag;
+      const headRadius=15*(Number(ui.faceSize.value)/100);
+      const tailX=m.x-ux*(headRadius+7);
+      const tailY=m.y-uy*(headRadius+7);
+
+      m.trail.push({x:tailX,y:tailY,life:1});
+      if(m.trail.length>42)m.trail.shift();
+      for(const t of m.trail)t.life-=dt*1.05;
+      m.trail=m.trail.filter(t=>t.life>0);
+
+      if(Math.random()<Math.min(1,dt*58)){
+        const speed=rand(55,145);
+        const a=Math.atan2(-m.vy,-m.vx)+rand(-.28,.28);
+        state.particles.push({
+          x:tailX+rand(-2.5,2.5),y:tailY+rand(-2.5,2.5),
+          vx:Math.cos(a)*speed,vy:Math.sin(a)*speed,
+          life:rand(.65,1.25),kind:'spark'
+        });
+      }
+    }
+
+    if(m.y>=GROUND-2){
+      m.alive=false;
+      explode(m.x,GROUND-4,46,false);
+      state.shake=.55;
+      if(m.target.type==='city'){
+        const c=state.cities[m.target.index];
+        if(c&&c.alive)c.alive=false;
+      }else{
+        const b=state.batteries[m.target.index];
+        if(b&&b.alive)b.alive=false;
+      }
+    }
+  }
+
+  for(const i of state.interceptors){
+    i.px=i.x;i.py=i.y;i.x+=i.vx*dt;i.y+=i.vy*dt;
+    const reached=Math.hypot(i.tx-i.x,i.ty-i.y)<14 ||
+      ((i.vx>=0&&i.x>=i.tx)||(i.vx<0&&i.x<=i.tx)) &&
+      ((i.vy>=0&&i.y>=i.ty)||(i.vy<0&&i.y<=i.ty));
+    if(reached){i.dead=true;explode(i.tx,i.ty,MAX_EXPLOSION,false)}
+  }
+
+  for(const e of state.explosions){
+    e.age+=dt;
+    const rate=e.secondary?120:145;
+    if(e.phase==='grow'){e.r+=rate*dt;if(e.r>=e.max){e.r=e.max;e.phase='shrink'}}
+    else {e.r-=rate*.8*dt;if(e.r<=0)e.dead=true}
+  }
+
+  for(const m of state.incoming){
+    if(!m.alive)continue;
+    for(const e of state.explosions){
+      if(e.dead)continue;
+      if(Math.hypot(m.x-e.x,m.y-e.y)<=e.r+8){
+        m.alive=false;
+        state.score += e.secondary?175:125;
+        sayOuch();
+        explode(m.x,m.y,Math.max(36,MAX_EXPLOSION*.62),true);
+        break;
+      }
+    }
+  }
+
+  for(const p of state.particles){
+    p.life-=dt;p.x+=p.vx*dt;p.y+=p.vy*dt;p.vy+=45*dt;
+  }
+
+  state.incoming=state.incoming.filter(m=>m.alive);
+  state.interceptors=state.interceptors.filter(i=>!i.dead && i.y>-30 && i.x>-30 && i.x<W+30);
+  state.explosions=state.explosions.filter(e=>!e.dead);
+  state.particles=state.particles.filter(p=>p.life>0);
+
+  if(state.cities.every(c=>!c.alive)){gameOver();return}
+
+  if(state.waveSpawned>=state.waveTarget && state.incoming.length===0 && state.explosions.length===0){
+    if(!state.betweenWaves){state.betweenWaves=true;state.waveDelay=1.6}
+  }
+  if(state.betweenWaves){
+    state.waveDelay-=dt;
+    if(state.waveDelay<=0)nextWave();
+  }
+
+  if(state.score>state.highScore){
+    state.highScore=state.score;
+    localStorage.setItem('tgmd.highScore.v1', String(state.score));
+  }
+  updateHud();
+}
+
+function draw(){
+  ctx.save();
+  if(state.shake>0)ctx.translate(rand(-5,5)*state.shake,rand(-3,3)*state.shake);
+  const g=ctx.createLinearGradient(0,0,0,H);
+  g.addColorStop(0,'#020617');g.addColorStop(.65,'#111827');g.addColorStop(1,'#172033');
+  ctx.fillStyle=g;ctx.fillRect(0,0,W,H);
+
+  drawStars();
+  drawGround();
+  drawCitiesAndBatteries();
+
+  for(const m of state.incoming)drawIncoming(m);
+  for(const i of state.interceptors)drawInterceptor(i);
+  for(const e of state.explosions)drawExplosion(e);
+  for(const p of state.particles){
+    ctx.globalAlpha=Math.max(0,p.life*2.6);
+    if(p.kind==='spark'){
+      ctx.fillStyle='#fbbf24';
+      const r=1.2+Math.min(1,p.life)*1.9;
+      ctx.beginPath();ctx.arc(p.x,p.y,r,0,Math.PI*2);ctx.fill();
+      ctx.strokeStyle='rgba(253,230,138,.68)';
+      ctx.lineWidth=1.25;
+      ctx.beginPath();ctx.moveTo(p.x,p.y);ctx.lineTo(p.x-p.vx*.10,p.y-p.vy*.10);ctx.stroke();
+    }else{
+      ctx.fillStyle='#fde68a';ctx.fillRect(p.x-1.5,p.y-1.5,3,3);
+    }
+  }
+  ctx.globalAlpha=1;
+  ctx.restore();
+
+  if(state.running&&state.paused){
+    ctx.fillStyle='rgba(2,6,23,.6)';ctx.fillRect(0,0,W,H);
+    ctx.fillStyle='#fff';ctx.font='700 42px Arial';ctx.textAlign='center';ctx.fillText('PAUSED',W/2,H/2);
+  }
+  if(state.running&&state.betweenWaves){
+    ctx.fillStyle='rgba(15,23,42,.72)';ctx.fillRect(W/2-180,65,360,58);
+    ctx.fillStyle='#fff';ctx.font='700 24px Arial';ctx.textAlign='center';ctx.fillText(`WAVE ${state.wave} COMPLETE`,W/2,101);
+  }
+}
+let stars=Array.from({length:100},()=>({x:Math.random()*W,y:Math.random()*540,a:rand(.18,.8),r:rand(.4,1.5)}));
+function drawStars(){for(const s of stars){ctx.globalAlpha=s.a;ctx.fillStyle='#e2e8f0';ctx.beginPath();ctx.arc(s.x,s.y,s.r,0,Math.PI*2);ctx.fill()}ctx.globalAlpha=1}
+function drawGround(){
+  ctx.fillStyle='#182813';ctx.beginPath();ctx.moveTo(0,GROUND);for(let x=0;x<=W;x+=80)ctx.lineTo(x,GROUND-rand(0,18));ctx.lineTo(W,H);ctx.lineTo(0,H);ctx.closePath();ctx.fill();
+  ctx.strokeStyle='#33582b';ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(0,GROUND);ctx.lineTo(W,GROUND);ctx.stroke();
+}
+function drawCitiesAndBatteries(){
+  for(const c of state.cities){
+    if(!c.alive){ctx.fillStyle='#3f3f46';ctx.fillRect(c.x-25,GROUND-8,50,8);continue}
+    ctx.fillStyle='#93c5fd';
+    ctx.fillRect(c.x-25,GROUND-38,13,38);ctx.fillRect(c.x-8,GROUND-55,16,55);ctx.fillRect(c.x+12,GROUND-30,14,30);
+    ctx.fillStyle='#fef08a';for(let y=GROUND-48;y<GROUND-8;y+=12){ctx.fillRect(c.x-4,y,3,5)}
+  }
+  for(const b of state.batteries){
+    if(!b.alive){ctx.fillStyle='#44403c';ctx.fillRect(b.x-34,GROUND-7,68,7);continue}
+    ctx.fillStyle='#86efac';ctx.beginPath();ctx.moveTo(b.x-34,GROUND);ctx.lineTo(b.x,GROUND-36);ctx.lineTo(b.x+34,GROUND);ctx.closePath();ctx.fill();
+    ctx.fillStyle='#bbf7d0';ctx.fillRect(b.x-5,GROUND-47,10,26);
+  }
+}
+function drawIncoming(m){
+  // Long flame tail: oldest points are faint/thin, newest points terminate at
+  // the back edge of the face missile.
+  if(m.trail&&m.trail.length>1){
+    for(let i=1;i<m.trail.length;i++){
+      const a=m.trail[i-1], b=m.trail[i];
+      const q=i/(m.trail.length-1);
+      ctx.globalAlpha=.10+.72*q;
+      ctx.strokeStyle=q>.72?'#fde68a':(q>.38?'#f59e0b':'#ef4444');
+      ctx.lineWidth=1.5+5.5*q;
+      ctx.beginPath();ctx.moveTo(a.x,a.y);ctx.lineTo(b.x,b.y);ctx.stroke();
+    }
+    ctx.globalAlpha=1;
+  }
+
+  // Thin red flight trace remains behind the brighter flame tail.
+  ctx.strokeStyle='#ef4444';ctx.globalAlpha=.42;ctx.lineWidth=1.2;ctx.beginPath();ctx.moveTo(m.px,m.py);ctx.lineTo(m.x,m.y);ctx.stroke();ctx.globalAlpha=1;
+  const size=30*(Number(ui.faceSize.value)/100);
+  if(m.faceIndex>=0&&faces[m.faceIndex]){
+    const f=faces[m.faceIndex];
+    ctx.save();ctx.translate(m.x,m.y);ctx.rotate(m.angle);
+    ctx.beginPath();ctx.arc(0,0,size/2,0,Math.PI*2);ctx.clip();
+    const img=f.img;
+    const crop=getFaceCrop(f);
+    ctx.drawImage(img,crop.sx,crop.sy,crop.s,crop.s,-size/2,-size/2,size,size);
+    ctx.restore();
+    ctx.strokeStyle='#fecaca';ctx.lineWidth=1.5;ctx.beginPath();ctx.arc(m.x,m.y,size/2,0,Math.PI*2);ctx.stroke();
+  }else{
+    ctx.fillStyle='#f87171';ctx.beginPath();ctx.arc(m.x,m.y,6,0,Math.PI*2);ctx.fill();
+  }
+}
+function drawInterceptor(i){
+  ctx.strokeStyle='#60a5fa';ctx.lineWidth=2;ctx.globalAlpha=.9;ctx.beginPath();ctx.moveTo(i.px,i.py);ctx.lineTo(i.x,i.y);ctx.stroke();ctx.globalAlpha=1;
+  ctx.fillStyle='#dbeafe';ctx.beginPath();ctx.arc(i.x,i.y,3,0,Math.PI*2);ctx.fill();
+}
+function drawExplosion(e){
+  const grad=ctx.createRadialGradient(e.x,e.y,0,e.x,e.y,Math.max(1,e.r));
+  grad.addColorStop(0,'rgba(255,255,255,.95)');
+  grad.addColorStop(.28,e.secondary?'rgba(250,204,21,.85)':'rgba(96,165,250,.9)');
+  grad.addColorStop(.7,e.secondary?'rgba(249,115,22,.45)':'rgba(37,99,235,.38)');
+  grad.addColorStop(1,'rgba(255,255,255,0)');
+  ctx.fillStyle=grad;ctx.beginPath();ctx.arc(e.x,e.y,Math.max(1,e.r),0,Math.PI*2);ctx.fill();
+  ctx.strokeStyle=e.secondary?'#fde68a':'#bfdbfe';ctx.lineWidth=1.5;ctx.globalAlpha=.6;ctx.stroke();ctx.globalAlpha=1;
+}
+function loop(now){
+  const dt=Math.min(.04,(now-last)/1000);last=now;
+  update(dt);draw();
+  if(state.running||state.gameOver)raf=requestAnimationFrame(loop);
+}
+
+function canvasPoint(ev){
+  const r=canvas.getBoundingClientRect();
+  const p=ev.touches?ev.touches[0]:ev;
+  return {x:(p.clientX-r.left)*W/r.width,y:(p.clientY-r.top)*H/r.height};
+}
+canvas.addEventListener('pointerdown',e=>{const p=canvasPoint(e);fireAt(p.x,p.y)});
+
+ui.startBtn.addEventListener('click',startGame);
+ui.pauseBtn.addEventListener('click',()=>{
+  if(!state.running)return;
+  state.paused=!state.paused;updateHud();tone(state.paused?180:360,.05,'square',.015)
+});
+ui.helpBtn.addEventListener('click',()=>ui.helpBack.classList.add('show'));
+ui.closeHelp.addEventListener('click',()=>ui.helpBack.classList.remove('show'));
+ui.helpBack.addEventListener('click',e=>{if(e.target===ui.helpBack)ui.helpBack.classList.remove('show')});
+
+ui.faceSize.addEventListener('input',()=>ui.faceSizeVal.textContent=ui.faceSize.value+'%');
+
+function getFaceCrop(f){
+  const img=f.img, iw=img.naturalWidth||img.width, ih=img.naturalHeight||img.height;
+  const base=Math.min(iw,ih);
+  const zoom=Math.max(1,Number(f.zoom||1));
+  const s=Math.max(1,base/zoom);
+  const cx=Math.max(s/2,Math.min(iw-s/2,Number(f.cx ?? iw/2)));
+  const cy=Math.max(s/2,Math.min(ih-s/2,Number(f.cy ?? ih/2)));
+  return {sx:cx-s/2,sy:cy-s/2,s,cx,cy};
+}
+
+function renderFaces(){
+  ui.faces.innerHTML='';
+  if(!faces.length){
+    ui.faces.innerHTML='<div class="face empty-face">No images loaded</div>';
+    ui.cropBox.classList.remove('show');return;
+  }
+  faces.forEach((f,i)=>{
+    const d=document.createElement('div');d.className='face';d.title='Click to crop this image';
+    const cv=document.createElement('canvas');cv.width=120;cv.height=120;
+    const c=cv.getContext('2d'), crop=getFaceCrop(f);
+    c.save();c.beginPath();c.arc(60,60,58,0,Math.PI*2);c.clip();
+    c.drawImage(f.img,crop.sx,crop.sy,crop.s,crop.s,0,0,120,120);c.restore();
+    const b=document.createElement('button');b.type='button';b.textContent='×';b.title='Remove image';
+    b.addEventListener('click',e=>{
+      e.stopPropagation();
+      URL.revokeObjectURL(f.url);
+      faces.splice(i,1);
+      if(selectedFace===i)selectedFace=-1;
+      else if(selectedFace>i)selectedFace--;
+      renderFaces();
+      if(selectedFace>=0)selectFace(selectedFace);
+    });
+    d.addEventListener('click',()=>selectFace(i));
+    d.append(cv,b);ui.faces.appendChild(d);
+  });
+}
+
+const cropCtx=ui.cropCanvas.getContext('2d');
+let cropDrag=null;
+
+function drawCropEditor(){
+  cropCtx.clearRect(0,0,ui.cropCanvas.width,ui.cropCanvas.height);
+  cropCtx.fillStyle='#0f172a';cropCtx.fillRect(0,0,ui.cropCanvas.width,ui.cropCanvas.height);
+  if(selectedFace<0||!faces[selectedFace])return;
+  const f=faces[selectedFace], img=f.img;
+  const iw=img.naturalWidth||img.width, ih=img.naturalHeight||img.height;
+  const CW=ui.cropCanvas.width, CH=ui.cropCanvas.height;
+  const viewScale=Math.min(CW/iw,CH/ih);
+  const dw=iw*viewScale,dh=ih*viewScale,ox=(CW-dw)/2,oy=(CH-dh)/2;
+  cropCtx.drawImage(img,ox,oy,dw,dh);
+
+  const crop=getFaceCrop(f);
+  const sx=ox+crop.sx*viewScale, sy=oy+crop.sy*viewScale, ss=crop.s*viewScale;
+  const cx=sx+ss/2,cy=sy+ss/2,r=ss/2;
+
+  cropCtx.save();
+  cropCtx.fillStyle='rgba(2,6,23,.58)';
+  cropCtx.beginPath();cropCtx.rect(0,0,CW,CH);
+  cropCtx.arc(cx,cy,r,0,Math.PI*2,true);
+  cropCtx.fill('evenodd');
+  cropCtx.restore();
+
+  cropCtx.strokeStyle='#fff';cropCtx.lineWidth=4;
+  cropCtx.beginPath();cropCtx.arc(cx,cy,r,0,Math.PI*2);cropCtx.stroke();
+  cropCtx.strokeStyle='rgba(37,99,235,.95)';cropCtx.lineWidth=2;
+  cropCtx.beginPath();cropCtx.arc(cx,cy,r-4,0,Math.PI*2);cropCtx.stroke();
+
+  cropCtx.strokeStyle='rgba(255,255,255,.55)';cropCtx.lineWidth=1;
+  cropCtx.beginPath();
+  cropCtx.moveTo(cx-r*.45,cy);cropCtx.lineTo(cx+r*.45,cy);
+  cropCtx.moveTo(cx,cy-r*.45);cropCtx.lineTo(cx,cy+r*.45);
+  cropCtx.stroke();
+}
+
+function selectFace(i){
+  selectedFace=i;const f=faces[i];if(!f)return;
+  if(f.cx==null){
+    const iw=f.img.naturalWidth||f.img.width, ih=f.img.naturalHeight||f.img.height;
+    f.cx=iw/2;f.cy=ih/2;f.zoom=1;
+  }
+  ui.cropZoom.value=Math.round((f.zoom||1)*100);
+  ui.cropZoomVal.textContent=ui.cropZoom.value+'%';
+  ui.cropBox.classList.add('show');
+  drawCropEditor();
+}
+
+function cropPointerToImage(ev){
+  const f=faces[selectedFace], img=f.img;
+  const rect=ui.cropCanvas.getBoundingClientRect();
+  const px=(ev.clientX-rect.left)*ui.cropCanvas.width/rect.width;
+  const py=(ev.clientY-rect.top)*ui.cropCanvas.height/rect.height;
+  const iw=img.naturalWidth||img.width, ih=img.naturalHeight||img.height;
+  const scale=Math.min(ui.cropCanvas.width/iw,ui.cropCanvas.height/ih);
+  const ox=(ui.cropCanvas.width-iw*scale)/2, oy=(ui.cropCanvas.height-ih*scale)/2;
+  return {x:(px-ox)/scale,y:(py-oy)/scale,scale};
+}
+
+ui.cropCanvas.addEventListener('pointerdown',ev=>{
+  if(selectedFace<0||!faces[selectedFace])return;
+  ui.cropCanvas.setPointerCapture(ev.pointerId);
+  const p=cropPointerToImage(ev), f=faces[selectedFace];
+  cropDrag={startX:p.x,startY:p.y,startCx:f.cx,startCy:f.cy};
+});
+ui.cropCanvas.addEventListener('pointermove',ev=>{
+  if(!cropDrag||selectedFace<0)return;
+  const f=faces[selectedFace],p=cropPointerToImage(ev);
+  const crop=getFaceCrop(f), iw=f.img.naturalWidth||f.img.width, ih=f.img.naturalHeight||f.img.height;
+  f.cx=Math.max(crop.s/2,Math.min(iw-crop.s/2,cropDrag.startCx+(p.x-cropDrag.startX)));
+  f.cy=Math.max(crop.s/2,Math.min(ih-crop.s/2,cropDrag.startCy+(p.y-cropDrag.startY)));
+  drawCropEditor();renderFaces();
+});
+function endCropDrag(){cropDrag=null}
+ui.cropCanvas.addEventListener('pointerup',endCropDrag);
+ui.cropCanvas.addEventListener('pointercancel',endCropDrag);
+
+ui.cropZoom.addEventListener('input',()=>{
+  if(selectedFace<0||!faces[selectedFace])return;
+  const f=faces[selectedFace], old=getFaceCrop(f);
+  f.zoom=Number(ui.cropZoom.value)/100;
+  const next=getFaceCrop(f), iw=f.img.naturalWidth||f.img.width, ih=f.img.naturalHeight||f.img.height;
+  f.cx=Math.max(next.s/2,Math.min(iw-next.s/2,old.cx));
+  f.cy=Math.max(next.s/2,Math.min(ih-next.s/2,old.cy));
+  ui.cropZoomVal.textContent=ui.cropZoom.value+'%';
+  drawCropEditor();renderFaces();
+});
+ui.cropReset.addEventListener('click',()=>{
+  if(selectedFace<0||!faces[selectedFace])return;
+  const f=faces[selectedFace], iw=f.img.naturalWidth||f.img.width, ih=f.img.naturalHeight||f.img.height;
+  f.cx=iw/2;f.cy=ih/2;f.zoom=1;
+  ui.cropZoom.value=100;ui.cropZoomVal.textContent='100%';
+  drawCropEditor();renderFaces();
+});
+ui.cropDone.addEventListener('click',()=>ui.cropBox.classList.remove('show'));
+
+ui.faceInput.addEventListener('change', async e=>{
+  const files=[...e.target.files].slice(0,12);
+  for(const file of files){
+    const url=URL.createObjectURL(file), img=new Image();
+    await new Promise((res,rej)=>{img.onload=res;img.onerror=rej;img.src=url}).catch(()=>null);
+    if(img.complete&&img.naturalWidth){
+      faces.push({
+        url,img,
+        cx:img.naturalWidth/2,
+        cy:img.naturalHeight/2,
+        zoom:1,
+        name:file.name
+      });
+    } else URL.revokeObjectURL(url);
+  }
+  e.target.value='';
+  renderFaces();
+  if(faces.length&&selectedFace<0)selectFace(0);
+});
+
+draw();
+})();
+</script>
+</body>
+</html>
