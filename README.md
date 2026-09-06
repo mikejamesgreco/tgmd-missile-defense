@@ -1,4 +1,4 @@
-# TGMD - Missile Defense
+# TGMD Missile Defense
 
 **The Greco Missile Defense**
 
@@ -15,11 +15,11 @@ and defend your cities from the incoming targets.
 
 > **Your faces. Your missiles. Defend your cities.**
 
-![TGMD - Missile Defense screenshot](screenshot.jpeg)
+![TGMD Missile Defense screenshot](screenshot.jpeg)
 
 ## Play TGMD
 
-**[▶ Play TGMD - Missile Defense in your
+**[▶ Play TGMD Missile Defense in your
 browser](https://mikejamesgreco.github.io/tgmd-missile-defense/)**
 
 No installation is required. The GitHub Pages version runs TGMD directly
@@ -124,6 +124,6 @@ See the repository `LICENSE` file for details.
 
 **Michael J. Greco**
 
-TGMD - Missile Defense --- **The Greco Missile Defense**
+TGMD Missile Defense --- **The Greco Missile Defense**
 
 © mikejamesgreco.me LLC. All rights reserved.
