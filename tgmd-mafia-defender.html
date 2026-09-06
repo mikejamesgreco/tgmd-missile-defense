@@ -1,0 +1,636 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>TGMD Mafia Defender v0014</title>
+<meta name="description" content="TGMD The Greco Mafia Defender. A single-file, local-first arcade defense game with wiseguy defenders, Molotov cocktails, and optional locally loaded bottle-label faces.">
+<style>
+  *{box-sizing:border-box}
+  :root{
+    --bg:#f4f6f8;--panel:#fff;--text:#1f2937;--muted:#64748b;--line:#d9e1ea;
+    --blue:#2563eb;--blue2:#1d4ed8;--soft:#f8fafc;--danger:#b91c1c;--good:#15803d;
+  }
+  html,body{margin:0;min-height:100%;font-family:Arial,Helvetica,sans-serif;background:var(--bg);color:var(--text)}
+  body{padding:18px;overflow-y:auto}
+  .app{max-width:1450px;margin:0 auto;min-height:calc(100vh - 36px);display:flex;flex-direction:column;gap:14px}
+  .topbar{
+    display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap;
+    padding:12px 14px;background:linear-gradient(#fff,#fbfcfe);border:1px solid var(--line);
+    border-radius:10px;box-shadow:0 2px 8px rgba(15,23,42,.05)
+  }
+  .brand{display:flex;flex-direction:column;gap:2px}
+  .brand strong{font-size:22px;line-height:1.02;letter-spacing:-.03em}
+  .brand small{font-size:8px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:#64748b;animation:blink 2.2s ease-in-out infinite}
+  .brand .docs-link{font-size:9px;font-weight:700;color:#64748b;text-decoration:none;margin-top:1px}
+  .brand .docs-link:hover{color:var(--blue);text-decoration:underline}
+  @keyframes blink{0%,100%{opacity:.28}50%{opacity:.95}}
+  .controls{display:flex;align-items:end;gap:8px;flex-wrap:wrap}
+  .group{display:flex;align-items:center;gap:6px;padding:5px 6px;background:#fff;border:1px solid var(--line);border-radius:8px}
+  .group label{font-size:9px;text-transform:uppercase;letter-spacing:.08em;font-weight:800;color:#64748b}
+  button,.filebtn{
+    border:1px solid #cbd5e1;background:#fff;color:#334155;border-radius:7px;padding:8px 10px;
+    font:700 12px Arial,Helvetica,sans-serif;cursor:pointer;text-decoration:none;display:inline-flex;align-items:center;gap:6px
+  }
+  button:hover,.filebtn:hover{border-color:#94a3b8}
+  button.primary{background:var(--blue);border-color:var(--blue);color:#fff}
+  button.primary:hover{background:var(--blue2)}
+  button.danger{color:var(--danger)}
+  button:disabled{opacity:.45;cursor:not-allowed}
+  input[type=file]{display:none}
+  .layout{display:grid;grid-template-columns:minmax(0,1fr) 300px;gap:14px;align-items:start}
+  .gamecard,.sidecard{
+    background:#fff;border:1px solid var(--line);border-radius:10px;box-shadow:0 4px 15px rgba(15,23,42,.04)
+  }
+  .gamecard{padding:10px}
+  .hud{
+    display:grid;grid-template-columns:repeat(6,minmax(80px,1fr));gap:7px;margin-bottom:8px
+  }
+  .stat{background:var(--soft);border:1px solid #e2e8f0;border-radius:8px;padding:7px 8px}
+  .stat b{display:block;font-size:15px}
+  .stat span{font-size:9px;text-transform:uppercase;letter-spacing:.08em;color:#64748b;font-weight:800}
+  .canvas-wrap{position:relative}
+  canvas{
+    display:block;width:100%;height:auto;aspect-ratio:16/9;background:#050914;border-radius:8px;border:1px solid #172033;
+    touch-action:none;cursor:crosshair
+  }
+  .overlay{
+    position:absolute;inset:0;display:flex;align-items:center;justify-content:center;pointer-events:none;
+  }
+  .message{
+    display:none;max-width:520px;text-align:center;background:rgba(2,6,23,.86);color:#fff;border:1px solid rgba(148,163,184,.35);
+    border-radius:12px;padding:18px 22px;backdrop-filter:blur(3px)
+  }
+  .message.show{display:block}
+  .message h2{margin:0 0 8px;font-size:26px}
+  .message p{margin:4px 0;color:#cbd5e1;font-size:13px}
+  .side{display:flex;flex-direction:column;gap:14px}
+  .sidecard{padding:14px}
+  .sidecard h3{margin:0 0 10px;font-size:15px}
+  .sidecard p,.hint{font-size:12px;color:#64748b;line-height:1.45}
+  .setting{margin:11px 0}
+  .setting-row{display:flex;justify-content:space-between;gap:10px;align-items:center;font-size:12px;font-weight:700}
+  input[type=range]{width:100%}
+  .faces{display:grid;grid-template-columns:repeat(3,1fr);gap:7px;margin-top:9px}
+  .face{
+    position:relative;aspect-ratio:1;background:#eef2f7;border:1px solid #dbe2ea;border-radius:50%;overflow:hidden
+  }
+  .face img{width:100%;height:100%;object-fit:cover;display:block}
+  .face canvas{
+    display:block;width:100%;height:100%;aspect-ratio:1/1;
+    border:0;border-radius:0;background:transparent;cursor:pointer
+  }
+  .face button{
+    position:absolute;right:-2px;top:-2px;width:22px;height:22px;padding:0;justify-content:center;border-radius:50%;
+    background:#fff;color:#991b1b;font-size:11px
+  }
+  .empty-face{display:flex;align-items:center;justify-content:center;color:#94a3b8;font-size:10px;text-align:center;padding:8px}
+  .cropbox{display:none;margin-top:10px;padding-top:10px;border-top:1px solid #e2e8f0}
+  .cropbox.show{display:block}
+  .crop-editor{
+    position:relative;width:100%;aspect-ratio:1;background:#0f172a;border:1px solid #cbd5e1;
+    border-radius:9px;overflow:hidden;touch-action:none;cursor:grab
+  }
+  .crop-editor:active{cursor:grabbing}
+  .crop-editor canvas{width:100%;height:100%;aspect-ratio:1;border:0;border-radius:0;cursor:inherit;background:#0f172a}
+  .crop-note{font-size:11px;color:#64748b;line-height:1.35;margin-top:7px}
+  .crop-actions{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
+  .crop-actions button{flex:1;justify-content:center;min-width:84px}
+  .legend{display:grid;grid-template-columns:1fr 1fr;gap:7px;font-size:11px;color:#64748b}
+  .legend div{padding:7px;background:var(--soft);border-radius:7px;border:1px solid #e2e8f0}
+  .helpback{
+    position:fixed;inset:0;background:rgba(15,23,42,.5);display:none;align-items:center;justify-content:center;padding:18px;z-index:20
+  }
+  .helpback.show{display:flex}
+  .modal{width:min(760px,96vw);max-height:88vh;background:#fff;border-radius:12px;border:1px solid var(--line);display:flex;flex-direction:column;overflow:hidden}
+  .modalhead{padding:14px 16px;border-bottom:1px solid var(--line);font-weight:800}
+  .modalbody{padding:16px;overflow:auto;font-size:13px;color:#475569;line-height:1.5}
+  .modalbody h3{color:#1f2937;margin:18px 0 6px}
+  .modalactions{padding:10px 14px;border-top:1px solid var(--line);display:flex;justify-content:flex-end}
+  footer{
+    margin-top:auto;padding:10px 2px 2px;color:#64748b;font-size:10px;display:flex;justify-content:space-between;gap:14px;flex-wrap:wrap
+  }
+  footer a{color:#64748b;text-decoration:none;font-weight:700}
+  footer a:hover{color:var(--blue);text-decoration:underline}
+  @media(max-width:900px){
+    .layout{grid-template-columns:1fr}.side{grid-template-columns:1fr 1fr;display:grid}
+    .hud{grid-template-columns:repeat(3,1fr)}
+  }
+  @media(max-width:600px){
+    body{padding:8px}.side{display:flex}.hud{grid-template-columns:repeat(2,1fr)}
+    .brand strong{font-size:19px}.controls{width:100%}.group{flex-wrap:wrap}
+  }
+</style>
+</head>
+<body>
+<div class="app">
+  <header class="topbar">
+    <div class="brand">
+      <strong>TGMD Mafia Defender</strong>
+      <small>The Greco Mafia Defender</small>
+      <a class="docs-link" href="https://github.com/mikejamesgreco/tgmd-mafia-defender#readme" target="_blank" rel="noopener noreferrer">GitHub / Docs ↗</a>
+    </div>
+    <div class="controls">
+      <div class="group"><label>Game</label><button class="primary" id="startBtn">Start Game</button><button id="pauseBtn">Pause</button></div>
+      <div class="group"><label>Labels</label><label class="filebtn" for="faceInput">Load Faces</label><input id="faceInput" type="file" accept="image/*" multiple></div>
+      <div class="group"><button id="helpBtn">Help</button></div>
+    </div>
+  </header>
+
+  <main class="layout">
+    <section class="gamecard">
+      <div class="hud">
+        <div class="stat"><span>Score</span><b id="score">0</b></div>
+        <div class="stat"><span>High Score</span><b id="highScore">0</b></div>
+        <div class="stat"><span>Wave</span><b id="wave">1</b></div>
+        <div class="stat"><span>Rounds</span><b id="ammo">90</b></div>
+        <div class="stat"><span>Venues</span><b id="venues">3</b></div>
+        <div class="stat"><span>Threats</span><b id="threats">0</b></div>
+      </div>
+      <div class="canvas-wrap">
+        <canvas id="game" width="1280" height="720" aria-label="TGMD Mafia Defender game canvas"></canvas>
+        <div class="overlay"><div class="message show" id="message">
+          <h2>TGMD Mafia Defender</h2>
+          <p>Protect the bank, the dive bar, and the casino.</p>
+          <p>Click or tap the sky and the nearest wiseguy opens fire.</p>
+        </div></div>
+      </div>
+    </section>
+
+    <aside class="side">
+      <section class="sidecard">
+        <h3>Molotov Labels</h3>
+        <p>Incoming bottles use a built-in cartoon label by default. Load one or several local images to replace it with randomized custom faces.</p>
+        <div class="faces" id="faces"><div class="face empty-face">Default wiseguy label</div></div>
+        <div class="cropbox" id="cropBox">
+          <div class="crop-editor" id="cropEditor">
+            <canvas id="cropCanvas" width="480" height="480" aria-label="Circular image crop editor"></canvas>
+          </div>
+          <div class="crop-note">Drag the image under the circle to position the face. Use Zoom to frame the label.</div>
+          <div class="setting">
+            <div class="setting-row"><span>Zoom</span><span id="cropZoomVal">100%</span></div>
+            <input type="range" id="cropZoom" min="100" max="400" value="100">
+          </div>
+          <div class="crop-actions">
+            <button type="button" id="cropReset">Reset Crop</button>
+            <button type="button" class="primary" id="cropDone">Done</button>
+          </div>
+        </div>
+        <div class="setting">
+          <div class="setting-row"><span>Label Size</span><span id="faceSizeVal">100%</span></div>
+          <input type="range" id="faceSize" min="70" max="150" value="100">
+        </div>
+      </section>
+
+      <section class="sidecard">
+        <h3>How to Play</h3>
+        <div class="legend">
+          <div><b>Click / Tap</b><br>Fire a burst</div>
+          <div><b>Bullets</b><br>Hit the bottles</div>
+          <div><b>Molotov</b><br>Protect the venues</div>
+          <div><b>Rounds</b><br>Limited each wave</div>
+        </div>
+        <p class="hint">The nearest surviving defender fires three rounds toward your click. Knock down every incoming Molotov before it reaches the neighborhood.</p>
+      </section>
+
+      <section class="sidecard">
+        <h3>Local Arcade</h3>
+        <p>No framework, no server, no upload. High score is stored locally in your browser. Loaded images are held only in memory and disappear when the page is closed or reloaded.</p>
+      </section>
+    </aside>
+  </main>
+
+  <footer>
+    <span>© <span id="year"></span> mikejamesgreco.me LLC. All rights reserved. v0014</span>
+    <span><a href="https://github.com/mikejamesgreco/tgmd-mafia-defender#readme" target="_blank" rel="noopener noreferrer">GitHub / README ↗</a></span>
+  </footer>
+</div>
+
+<div class="helpback" id="helpBack">
+  <div class="modal">
+    <div class="modalhead">TGMD Help</div>
+    <div class="modalbody">
+      <h3>Mission</h3>
+      Protect the neighborhood bank, dive bar, and casino from incoming Molotov cocktails. Each surviving location has its own wiseguy defender.
+      <h3>Controls</h3>
+      Click or tap anywhere in the sky. The nearest surviving defender fires a three-round burst toward that point. Bullets travel through the scene and destroy a bottle on contact.
+      <h3>Molotovs</h3>
+      Bottles arrive from above with burning rags and choose one of the surviving venues as a target. If a bottle reaches its destination, the venue is knocked out.
+      <h3>Labels</h3>
+      TGMD draws a built-in cartoon wiseguy on the bottle label when no images are loaded. Use <b>Load Faces</b> to select local images and TGMD will randomly use them instead. Click a loaded image to crop it.
+      <h3>Rounds and Waves</h3>
+      Ammunition is limited each wave. Surviving venues earn a wave bonus. Difficulty increases as the waves continue.
+      <h3>Privacy</h3>
+      Selected images are decoded locally in the browser. TGMD does not upload them or store them in localStorage. Reloading or closing the page removes them from the current session.
+    </div>
+    <div class="modalactions"><button id="closeHelp">Close</button></div>
+  </div>
+</div>
+
+<script>
+(() => {
+'use strict';
+
+const APP_VERSION='v0014';
+const canvas=document.getElementById('game'),ctx=canvas.getContext('2d');
+const W=canvas.width,H=canvas.height,GROUND=650;
+const START_AMMO=90, BURST=3;
+const VENUES=[
+  {x:220,type:'bank',name:'GRECO BANK'},
+  {x:640,type:'bar',name:'DIVE BAR'},
+  {x:1060,type:'casino',name:'CASINO'}
+];
+const ui=Object.fromEntries(['score','highScore','wave','ammo','venues','threats','message','startBtn','pauseBtn','faces','faceInput','faceSize','faceSizeVal','cropBox','cropEditor','cropCanvas','cropZoom','cropZoomVal','cropReset','cropDone','helpBack','helpBtn','closeHelp'].map(id=>[id,document.getElementById(id)]));
+document.getElementById('year').textContent=new Date().getFullYear();
+document.title=`TGMD Mafia Defender ${APP_VERSION}`;
+
+let audioCtx=null;
+function tone(freq=440,dur=.05,type='square',gain=.02){
+  try{audioCtx||=new(window.AudioContext||window.webkitAudioContext)();const o=audioCtx.createOscillator(),g=audioCtx.createGain();o.type=type;o.frequency.value=freq;g.gain.value=gain;o.connect(g);g.connect(audioCtx.destination);o.start();g.gain.exponentialRampToValueAtTime(.0001,audioCtx.currentTime+dur);o.stop(audioCtx.currentTime+dur)}catch{}
+}
+function gunShot(delay=0){
+  setTimeout(()=>{
+    try{
+      audioCtx||=new(window.AudioContext||window.webkitAudioContext)();
+      const now=audioCtx.currentTime;
+
+      const o1=audioCtx.createOscillator(),g1=audioCtx.createGain();
+      o1.type='square';o1.frequency.setValueAtTime(145,now);o1.frequency.exponentialRampToValueAtTime(70,now+.045);
+      g1.gain.setValueAtTime(.055,now);g1.gain.exponentialRampToValueAtTime(.0001,now+.055);
+      o1.connect(g1);g1.connect(audioCtx.destination);o1.start(now);o1.stop(now+.06);
+
+      const o2=audioCtx.createOscillator(),g2=audioCtx.createGain();
+      o2.type='triangle';o2.frequency.setValueAtTime(62,now);o2.frequency.exponentialRampToValueAtTime(38,now+.065);
+      g2.gain.setValueAtTime(.038,now);g2.gain.exponentialRampToValueAtTime(.0001,now+.075);
+      o2.connect(g2);g2.connect(audioCtx.destination);o2.start(now);o2.stop(now+.08);
+
+      const len=Math.floor(audioCtx.sampleRate*.045),buf=audioCtx.createBuffer(1,len,audioCtx.sampleRate),data=buf.getChannelData(0);
+      for(let i=0;i<len;i++)data[i]=(Math.random()*2-1)*(1-i/len);
+      const noise=audioCtx.createBufferSource(),ng=audioCtx.createGain(),filter=audioCtx.createBiquadFilter();
+      filter.type='bandpass';filter.frequency.value=1450;filter.Q.value=.7;
+      ng.gain.setValueAtTime(.032,now);ng.gain.exponentialRampToValueAtTime(.0001,now+.045);
+      noise.buffer=buf;noise.connect(filter);filter.connect(ng);ng.connect(audioCtx.destination);noise.start(now);
+    }catch{}
+  },delay);
+}
+function gunSound(shots=3){
+  for(let i=0;i<shots;i++)gunShot(i*58);
+}
+
+let state,faces=[],selectedFace=-1,last=performance.now(),raf=0,cropDrag=null;
+
+function resetState(){
+  state={
+    running:false,paused:false,gameOver:false,score:0,wave:1,ammo:START_AMMO,
+    highScore:Number(localStorage.getItem('tgmd.mafia.highScore.v1')||0),
+    venues:VENUES.map((v,i)=>({...v,i,alive:true,flash:0})),
+    molotovs:[],bullets:[],particles:[],fireballs:[],
+    waveSpawned:0,waveTarget:0,nextSpawn:0,betweenWaves:false,waveDelay:0,shake:0
+  };
+  updateHud();
+}
+resetState();
+
+function updateHud(){
+  ui.score.textContent=state.score.toLocaleString();
+  ui.highScore.textContent=state.highScore.toLocaleString();
+  ui.wave.textContent=state.wave;
+  ui.ammo.textContent=state.ammo;
+  ui.venues.textContent=state.venues.filter(v=>v.alive).length;
+  ui.threats.textContent=state.molotovs.length;
+  ui.pauseBtn.textContent=state.paused?'Resume':'Pause';
+}
+
+function startGame(){
+  cancelAnimationFrame(raf);resetState();state.running=true;ui.message.classList.remove('show');
+  beginWave();last=performance.now();raf=requestAnimationFrame(loop);tone(360,.08,'square',.025);
+}
+function beginWave(){
+  state.ammo=START_AMMO+Math.min(60,(state.wave-1)*6);
+  state.waveSpawned=0;state.waveTarget=6+state.wave*3;state.nextSpawn=.55;state.betweenWaves=false;updateHud();
+}
+function nextWave(){
+  const alive=state.venues.filter(v=>v.alive).length;
+  state.score+=alive*450;
+  state.wave++;
+  if(state.wave%4===0){const dead=state.venues.find(v=>!v.alive);if(dead)dead.alive=true;}
+  beginWave();
+}
+function gameOver(){
+  state.running=false;state.gameOver=true;
+  if(state.score>state.highScore){state.highScore=state.score;localStorage.setItem('tgmd.mafia.highScore.v1',String(state.score));}
+  updateHud();
+  ui.message.innerHTML=`<h2>THE NEIGHBORHOOD IS CLOSED</h2><p>Final score: <b>${state.score.toLocaleString()}</b> · Wave ${state.wave}</p><p>Press Start Game to reopen the joint.</p>`;
+  ui.message.classList.add('show');tone(85,.48,'sawtooth',.035);
+}
+
+function rand(a,b){return a+Math.random()*(b-a)}
+function pick(a){return a[(Math.random()*a.length)|0]}
+
+function spawnMolotov(){
+  const targets=state.venues.filter(v=>v.alive);
+  if(!targets.length){gameOver();return;}
+  const target=pick(targets),sx=rand(45,W-45),sy=-45,tx=target.x+rand(-34,34),ty=GROUND-12;
+  const dx=tx-sx,dy=ty-sy,len=Math.hypot(dx,dy)||1,speed=48+state.wave*5+rand(0,22);
+  state.molotovs.push({
+    x:sx,y:sy,px:sx,py:sy,vx:dx/len*speed,vy:dy/len*speed,targetIndex:target.i,
+    angle:rand(-.8,.8),spin:rand(-1.4,1.4),alive:true,
+    faceIndex:faces.length?((Math.random()*faces.length)|0):-1
+  });
+  state.waveSpawned++;
+}
+
+function fireAt(x,y){
+  if(!state.running||state.paused||state.ammo<=0||y>=GROUND-4)return;
+  const live=state.venues.filter(v=>v.alive);if(!live.length)return;
+  const shooter=live.reduce((a,b)=>Math.abs(b.x-x)<Math.abs(a.x-x)?b:a);
+  const sx=shooter.x,sy=GROUND-72,dx=x-sx,dy=y-sy,len=Math.hypot(dx,dy)||1;
+  const ux=dx/len,uy=dy/len,shots=Math.min(BURST,state.ammo);
+  for(let n=0;n<shots;n++){
+    const spread=rand(-.018,.018),cs=Math.cos(spread),sn=Math.sin(spread);
+    const bx=ux*cs-uy*sn,by=ux*sn+uy*cs,speed=760+rand(-35,35);
+    state.bullets.push({x:sx+bx*24,y:sy+by*24,px:sx,py:sy,vx:bx*speed,vy:by*speed,life:1.15,delay:n*.045});
+  }
+  state.ammo-=shots;shooter.flash=.18;gunSound(shots);updateHud();
+}
+
+function burstMolotov(m){
+  m.alive=false;state.score+=150+state.wave*12;
+  state.fireballs.push({x:m.x,y:m.y,r:5,max:30,phase:'grow',hold:.08});
+  for(let i=0;i<18;i++){const a=rand(0,Math.PI*2),s=rand(45,180);state.particles.push({x:m.x,y:m.y,vx:Math.cos(a)*s,vy:Math.sin(a)*s,life:rand(.25,.7),kind:i%3===0?'glass':'fire'});}
+  tone(180,.06,'sawtooth',.02);
+}
+function venueHit(v,x){
+  if(!v||!v.alive)return;v.alive=false;state.shake=.65;
+  state.fireballs.push({x,y:GROUND-22,r:8,max:58,phase:'grow',hold:.10});
+  for(let i=0;i<28;i++){const a=rand(Math.PI,Math.PI*2),s=rand(55,220);state.particles.push({x,y:GROUND-24,vx:Math.cos(a)*s,vy:Math.sin(a)*s,life:rand(.3,.9),kind:'fire'});}
+  tone(90,.2,'sawtooth',.035);
+}
+
+function update(dt){
+  if(!state.running||state.paused)return;
+  if(state.shake>0)state.shake=Math.max(0,state.shake-dt*2.5);
+  for(const v of state.venues)if(v.flash>0)v.flash-=dt;
+
+  state.nextSpawn-=dt;
+  if(state.waveSpawned<state.waveTarget&&state.nextSpawn<=0){
+    spawnMolotov();state.nextSpawn=Math.max(.22,rand(.55,1.18)-state.wave*.025);
+  }
+
+  for(const m of state.molotovs){
+    m.px=m.x;m.py=m.y;m.x+=m.vx*dt;m.y+=m.vy*dt;m.angle+=m.spin*dt;
+    if(m.y>=GROUND-18){m.alive=false;venueHit(state.venues[m.targetIndex],m.x);}
+  }
+
+  for(const b of state.bullets){
+    if(b.delay>0){b.delay-=dt;continue;}
+    b.px=b.x;b.py=b.y;b.x+=b.vx*dt;b.y+=b.vy*dt;b.life-=dt;
+    for(const m of state.molotovs){
+      if(!m.alive)continue;
+      if(Math.hypot(b.x-m.x,b.y-m.y)<24){b.life=0;burstMolotov(m);break;}
+    }
+  }
+
+  for(const f of state.fireballs){
+    if(f.phase==='grow'){
+      f.r+=180*dt;
+      if(f.r>=f.max){f.r=f.max;f.phase='hold';}
+    }else if(f.phase==='hold'){
+      f.hold-=dt;
+      if(f.hold<=0)f.phase='shrink';
+    }else{
+      f.r-=120*dt;
+      if(f.r<=0){f.r=0;f.dead=true;}
+    }
+  }
+  for(const p of state.particles){p.life-=dt;p.x+=p.vx*dt;p.y+=p.vy*dt;p.vy+=p.kind==='glass'?180:90;}
+  state.molotovs=state.molotovs.filter(m=>m.alive);
+  state.bullets=state.bullets.filter(b=>b.life>0&&b.y>-40&&b.x>-40&&b.x<W+40);
+  state.fireballs=state.fireballs.filter(f=>!f.dead);
+  state.particles=state.particles.filter(p=>p.life>0);
+
+  if(state.venues.every(v=>!v.alive)){gameOver();return;}
+  if(state.waveSpawned>=state.waveTarget&&state.molotovs.length===0){
+    if(!state.betweenWaves){state.betweenWaves=true;state.waveDelay=1.45;}
+  }
+  if(state.betweenWaves){state.waveDelay-=dt;if(state.waveDelay<=0)nextWave();}
+  if(state.score>state.highScore){state.highScore=state.score;localStorage.setItem('tgmd.mafia.highScore.v1',String(state.score));}
+  updateHud();
+}
+
+let stars=Array.from({length:90},()=>({x:Math.random()*W,y:Math.random()*500,a:rand(.15,.7),r:rand(.4,1.5)}));
+function drawStars(){for(const s of stars){ctx.globalAlpha=s.a;ctx.fillStyle='#e2e8f0';ctx.beginPath();ctx.arc(s.x,s.y,s.r,0,Math.PI*2);ctx.fill();}ctx.globalAlpha=1;}
+function drawBackground(){
+  const g=ctx.createLinearGradient(0,0,0,H);g.addColorStop(0,'#030712');g.addColorStop(.66,'#111827');g.addColorStop(1,'#23150f');ctx.fillStyle=g;ctx.fillRect(0,0,W,H);drawStars();
+  ctx.fillStyle='#16100d';ctx.fillRect(0,GROUND,W,H-GROUND);
+  ctx.fillStyle='#342319';ctx.fillRect(0,GROUND-7,W,7);
+}
+
+function drawBuilding(v){
+  const x=v.x,y=GROUND;
+  ctx.save();
+  if(!v.alive){
+    ctx.fillStyle='#343434';ctx.fillRect(x-90,y-22,180,22);
+    ctx.fillStyle='#1f1f1f';for(let i=0;i<8;i++)ctx.fillRect(x-80+i*22,y-38-rand(0,15),18,20);
+    ctx.restore();return;
+  }
+  if(v.type==='bank'){
+    ctx.fillStyle='#d6c7a1';ctx.fillRect(x-88,y-104,176,96);ctx.fillStyle='#ece2c4';ctx.fillRect(x-98,y-116,196,18);
+    for(let c=-2;c<=2;c++)ctx.fillRect(x+c*31-7,y-96,14,72);
+    ctx.fillStyle='#3b2f24';ctx.fillRect(x-28,y-64,56,56);
+  }else if(v.type==='bar'){
+    ctx.fillStyle='#563126';ctx.fillRect(x-92,y-98,184,90);ctx.fillStyle='#301b16';ctx.fillRect(x-36,y-68,72,60);
+    ctx.fillStyle='#7dd3fc';ctx.fillRect(x-78,y-74,34,32);ctx.fillRect(x+44,y-74,34,32);
+    ctx.fillStyle='#b91c1c';ctx.fillRect(x-76,y-114,152,22);
+  }else{
+    ctx.fillStyle='#4c1d95';ctx.fillRect(x-92,y-112,184,104);ctx.fillStyle='#fde68a';ctx.fillRect(x-84,y-104,168,24);
+    ctx.fillStyle='#fef3c7';for(let i=-3;i<=3;i++){ctx.beginPath();ctx.arc(x+i*22,y-92,3,0,Math.PI*2);ctx.fill();}
+    ctx.fillStyle='#23123f';ctx.fillRect(x-28,y-67,56,59);
+  }
+  ctx.fillStyle='#fff7d6';ctx.font='900 15px Arial';ctx.textAlign='center';ctx.fillText(v.name,x,y-126);
+  drawWiseguy(x,y-28,v.flash>0);
+  ctx.restore();
+}
+
+function drawWiseguy(x,y,flash){
+  ctx.save();ctx.translate(x,y);
+
+  ctx.fillStyle='rgba(0,0,0,.28)';
+  ctx.beginPath();ctx.ellipse(0,36,25,6,0,0,Math.PI*2);ctx.fill();
+
+  ctx.strokeStyle='#222836';ctx.lineWidth=5;ctx.lineCap='round';
+  ctx.beginPath();ctx.moveTo(-8,10);ctx.lineTo(-11,31);ctx.moveTo(8,10);ctx.lineTo(11,31);ctx.stroke();
+  ctx.fillStyle='#f8fafc';ctx.strokeStyle='#475569';ctx.lineWidth=1;
+  ctx.beginPath();ctx.ellipse(-14,34,9,4,-.08,0,Math.PI*2);ctx.fill();ctx.stroke();
+  ctx.beginPath();ctx.ellipse(14,34,9,4,.08,0,Math.PI*2);ctx.fill();ctx.stroke();
+
+  const shirt=ctx.createLinearGradient(0,-22,0,14);
+  shirt.addColorStop(0,'#9f67ff');shirt.addColorStop(1,'#6d28d9');
+  ctx.fillStyle=shirt;ctx.strokeStyle='#43156f';ctx.lineWidth=1.5;
+  ctx.beginPath();ctx.roundRect(-18,-22,36,38,9);ctx.fill();ctx.stroke();
+
+  ctx.strokeStyle='#d98b53';ctx.lineWidth=6;ctx.lineCap='round';
+  ctx.beginPath();ctx.moveTo(-17,-14);ctx.lineTo(-26,1);ctx.moveTo(17,-14);ctx.lineTo(24,-2);ctx.stroke();
+
+  ctx.fillStyle='#d98b53';ctx.fillRect(-5,-31,10,13);
+  ctx.fillStyle='#e8a36b';ctx.strokeStyle='#9d5835';ctx.lineWidth=1.2;
+  ctx.beginPath();ctx.ellipse(0,-43,16,19,0,0,Math.PI*2);ctx.fill();ctx.stroke();
+
+  ctx.beginPath();ctx.arc(-16,-42,3.5,0,Math.PI*2);ctx.arc(16,-42,3.5,0,Math.PI*2);ctx.fill();
+
+  ctx.fillStyle='#21140f';ctx.strokeStyle='#0d0907';ctx.lineWidth=1.4;
+  ctx.beginPath();
+  ctx.moveTo(-15,-53);ctx.quadraticCurveTo(-8,-66,2,-62);
+  ctx.quadraticCurveTo(11,-69,18,-57);ctx.quadraticCurveTo(21,-49,13,-48);
+  ctx.quadraticCurveTo(0,-55,-15,-53);ctx.closePath();ctx.fill();ctx.stroke();
+  ctx.strokeStyle='#6e4029';ctx.lineWidth=1;
+  ctx.beginPath();ctx.arc(-3,-59,10,-2.7,-.5);ctx.stroke();
+  ctx.beginPath();ctx.arc(5,-61,9,-2.6,-.4);ctx.stroke();
+
+  ctx.strokeStyle='#3a241b';ctx.lineWidth=2;
+  ctx.beginPath();ctx.moveTo(-11,-48);ctx.lineTo(-4,-46);ctx.moveTo(11,-48);ctx.lineTo(4,-46);ctx.stroke();
+  ctx.fillStyle='#fff';ctx.beginPath();ctx.arc(-6,-44,3.2,0,Math.PI*2);ctx.arc(7,-44,3.2,0,Math.PI*2);ctx.fill();
+  ctx.fillStyle='#1f1712';ctx.beginPath();ctx.arc(-5,-44,1.4,0,Math.PI*2);ctx.arc(8,-44,1.4,0,Math.PI*2);ctx.fill();
+  ctx.fillStyle='#efb078';ctx.beginPath();ctx.ellipse(5,-38,7,5,-.12,0,Math.PI*2);ctx.fill();
+  ctx.strokeStyle='#6b3424';ctx.lineWidth=1.7;ctx.beginPath();ctx.arc(1,-32,8,.15,Math.PI-.2);ctx.stroke();
+
+  const chainYs=[-18,-15,-12];
+  chainYs.forEach((cy,i)=>{
+    ctx.strokeStyle=i===1?'#fde047':'#facc15';ctx.lineWidth=i===1?2.2:1.7;
+    ctx.beginPath();ctx.arc(0,cy,11+i*2,.12,Math.PI-.12);ctx.stroke();
+  });
+  ctx.fillStyle='#facc15';ctx.strokeStyle='#a16207';ctx.lineWidth=.8;
+  ctx.beginPath();ctx.arc(-5,-3,3.2,0,Math.PI*2);ctx.fill();ctx.stroke();
+  ctx.beginPath();ctx.arc(5,-1,4.0,0,Math.PI*2);ctx.fill();ctx.stroke();
+  ctx.fillStyle='#fff5a7';ctx.font='900 4px Arial';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText('G',5,-.5);
+
+  ctx.save();ctx.translate(13,-8);ctx.rotate(-.60);
+
+  ctx.fillStyle='#7c4a2a';ctx.strokeStyle='#3c2417';ctx.lineWidth=1.2;
+  ctx.beginPath();ctx.moveTo(-10,-5);ctx.lineTo(6,-5);ctx.lineTo(10,3);ctx.lineTo(-8,7);ctx.closePath();ctx.fill();ctx.stroke();
+
+  ctx.fillStyle='#20242d';ctx.strokeStyle='#090b10';ctx.lineWidth=1.2;
+  ctx.fillRect(4,-5,27,10);ctx.strokeRect(4,-5,27,10);
+
+  ctx.fillStyle='#171a21';ctx.fillRect(29,-3,29,6);
+  ctx.fillStyle='#343a46';
+  for(let gx=33;gx<52;gx+=5)ctx.fillRect(gx,-4,2,8);
+
+  ctx.fillStyle='#11151b';ctx.fillRect(54,-8,2,6);
+
+  ctx.fillStyle='#5d3823';ctx.beginPath();ctx.moveTo(13,5);ctx.lineTo(21,5);ctx.lineTo(18,18);ctx.lineTo(11,16);ctx.closePath();ctx.fill();
+
+  ctx.fillStyle='#252a33';ctx.strokeStyle='#0c0e12';
+  ctx.beginPath();ctx.arc(27,8,8,0,Math.PI*2);ctx.fill();ctx.stroke();
+  ctx.strokeStyle='#59606d';ctx.lineWidth=1;ctx.beginPath();ctx.arc(27,8,4.5,0,Math.PI*2);ctx.stroke();
+
+  if(flash){
+    ctx.fillStyle='#fde047';ctx.beginPath();
+    ctx.moveTo(59,0);ctx.lineTo(72,-9);ctx.lineTo(68,-2);ctx.lineTo(80,0);
+    ctx.lineTo(68,3);ctx.lineTo(73,10);ctx.closePath();ctx.fill();
+    ctx.fillStyle='#fb923c';ctx.beginPath();ctx.moveTo(59,0);ctx.lineTo(69,-4);ctx.lineTo(66,0);ctx.lineTo(69,5);ctx.closePath();ctx.fill();
+  }
+  ctx.restore();
+
+  ctx.restore();
+}
+function drawDefaultLabel(x,y,r){
+  ctx.save();ctx.beginPath();ctx.arc(x,y,r,0,Math.PI*2);ctx.clip();
+  ctx.fillStyle='#f3d5ad';ctx.fillRect(x-r,y-r,r*2,r*2);
+  ctx.fillStyle='#21140f';ctx.beginPath();ctx.moveTo(x-r*.8,y-r*.35);ctx.quadraticCurveTo(x-r*.2,y-r*1.05,x+r*.2,y-r*.7);ctx.quadraticCurveTo(x+r*.75,y-r*.9,x+r*.85,y-r*.25);ctx.lineTo(x+r*.5,y-r*.1);ctx.lineTo(x-r*.8,y-r*.35);ctx.fill();
+  ctx.fillStyle='#e7a36e';ctx.beginPath();ctx.ellipse(x,y+r*.05,r*.72,r*.82,0,0,Math.PI*2);ctx.fill();
+  ctx.fillStyle='#fff';ctx.beginPath();ctx.arc(x-r*.22,y-r*.1,r*.16,0,Math.PI*2);ctx.arc(x+r*.25,y-r*.08,r*.16,0,Math.PI*2);ctx.fill();
+  ctx.fillStyle='#20120e';ctx.beginPath();ctx.arc(x-r*.18,y-r*.08,r*.055,0,Math.PI*2);ctx.arc(x+r*.29,y-r*.06,r*.055,0,Math.PI*2);ctx.fill();
+  ctx.fillStyle='#efb27c';ctx.beginPath();ctx.ellipse(x+r*.18,y+r*.16,r*.28,r*.18,0,0,Math.PI*2);ctx.fill();
+  ctx.strokeStyle='#5d2d20';ctx.lineWidth=1.5;ctx.beginPath();ctx.arc(x,y+r*.32,r*.32,.1,Math.PI-.1);ctx.stroke();
+  ctx.restore();ctx.strokeStyle='#f5e7ca';ctx.lineWidth=1.5;ctx.beginPath();ctx.arc(x,y,r,0,Math.PI*2);ctx.stroke();
+}
+
+function drawMolotov(m){
+  ctx.save();ctx.translate(m.x,m.y);ctx.rotate(m.angle);
+  // rag and flame
+  ctx.fillStyle='#7c2d12';ctx.fillRect(-6,-36,12,17);
+  const flick=Math.sin(performance.now()/70+m.x)*4;
+  ctx.fillStyle='#f97316';ctx.beginPath();ctx.moveTo(-10,-34);ctx.quadraticCurveTo(-17,-55,0,-68-flick);ctx.quadraticCurveTo(17,-55,10,-34);ctx.closePath();ctx.fill();
+  ctx.fillStyle='#fde047';ctx.beginPath();ctx.moveTo(-5,-35);ctx.quadraticCurveTo(-8,-48,0,-57-flick*.4);ctx.quadraticCurveTo(8,-48,5,-35);ctx.closePath();ctx.fill();
+  // larger bottle
+  ctx.fillStyle='rgba(34,91,52,.92)';ctx.strokeStyle='#86a887';ctx.lineWidth=2.4;
+  ctx.beginPath();ctx.roundRect(-18,-26,36,60,9);ctx.fill();ctx.stroke();ctx.fillRect(-8,-37,16,14);
+  // larger face label
+  const lr=14*(Number(ui.faceSize.value)/100);
+  if(m.faceIndex>=0&&faces[m.faceIndex]){
+    const f=faces[m.faceIndex],crop=getFaceCrop(f);
+    ctx.save();ctx.beginPath();ctx.arc(0,5,lr,0,Math.PI*2);ctx.clip();ctx.drawImage(f.img,crop.sx,crop.sy,crop.s,crop.s,-lr,5-lr,lr*2,lr*2);ctx.restore();
+    ctx.strokeStyle='#f8e7c4';ctx.lineWidth=1.5;ctx.beginPath();ctx.arc(0,5,lr,0,Math.PI*2);ctx.stroke();
+  }else drawDefaultLabel(0,5,lr);
+  ctx.restore();
+}
+
+function drawBullet(b){
+  if(b.delay>0)return;ctx.strokeStyle='#fde68a';ctx.lineWidth=2.2;ctx.globalAlpha=.92;ctx.beginPath();ctx.moveTo(b.px,b.py);ctx.lineTo(b.x,b.y);ctx.stroke();ctx.globalAlpha=1;
+  ctx.fillStyle='#fff7b2';ctx.beginPath();ctx.arc(b.x,b.y,2,0,Math.PI*2);ctx.fill();
+}
+function drawFireball(f){
+  const g=ctx.createRadialGradient(f.x,f.y,0,f.x,f.y,Math.max(1,f.r));g.addColorStop(0,'rgba(255,255,220,.95)');g.addColorStop(.3,'rgba(250,204,21,.9)');g.addColorStop(.68,'rgba(249,115,22,.55)');g.addColorStop(1,'rgba(127,29,29,0)');ctx.fillStyle=g;ctx.beginPath();ctx.arc(f.x,f.y,Math.max(1,f.r),0,Math.PI*2);ctx.fill();
+}
+
+function draw(){
+  ctx.save();if(state.shake>0)ctx.translate(rand(-5,5)*state.shake,rand(-3,3)*state.shake);
+  drawBackground();
+  for(const v of state.venues)drawBuilding(v);
+  for(const m of state.molotovs)drawMolotov(m);
+  for(const b of state.bullets)drawBullet(b);
+  for(const f of state.fireballs)drawFireball(f);
+  for(const p of state.particles){
+    ctx.globalAlpha=Math.max(0,p.life*2);ctx.fillStyle=p.kind==='glass'?'#a7f3d0':'#fb923c';const sz=p.kind==='glass'?2.5:3.5;ctx.fillRect(p.x-sz/2,p.y-sz/2,sz,sz);
+  }
+  ctx.globalAlpha=1;ctx.restore();
+  if(state.running&&state.paused){ctx.fillStyle='rgba(2,6,23,.62)';ctx.fillRect(0,0,W,H);ctx.fillStyle='#fff';ctx.font='700 42px Arial';ctx.textAlign='center';ctx.fillText('PAUSED',W/2,H/2);}
+  if(state.running&&state.betweenWaves){ctx.fillStyle='rgba(15,23,42,.78)';ctx.fillRect(W/2-190,64,380,58);ctx.fillStyle='#fff';ctx.font='700 24px Arial';ctx.textAlign='center';ctx.fillText(`WAVE ${state.wave} COMPLETE`,W/2,101);}
+}
+function loop(now){const dt=Math.min(.04,(now-last)/1000);last=now;update(dt);draw();if(state.running||state.gameOver)raf=requestAnimationFrame(loop);}
+
+function canvasPoint(ev){const r=canvas.getBoundingClientRect();return{x:(ev.clientX-r.left)*W/r.width,y:(ev.clientY-r.top)*H/r.height}}
+canvas.addEventListener('pointerdown',e=>{const p=canvasPoint(e);fireAt(p.x,p.y);});
+ui.startBtn.addEventListener('click',startGame);
+ui.pauseBtn.addEventListener('click',()=>{if(!state.running)return;state.paused=!state.paused;updateHud();});
+ui.helpBtn.addEventListener('click',()=>ui.helpBack.classList.add('show'));
+ui.closeHelp.addEventListener('click',()=>ui.helpBack.classList.remove('show'));
+ui.helpBack.addEventListener('click',e=>{if(e.target===ui.helpBack)ui.helpBack.classList.remove('show');});
+ui.faceSize.addEventListener('input',()=>ui.faceSizeVal.textContent=ui.faceSize.value+'%');
+
+function getFaceCrop(f){
+  const img=f.img,iw=img.naturalWidth||img.width,ih=img.naturalHeight||img.height,base=Math.min(iw,ih),zoom=Math.max(1,Number(f.zoom||1)),s=Math.max(1,base/zoom),cx=Math.max(s/2,Math.min(iw-s/2,Number(f.cx??iw/2))),cy=Math.max(s/2,Math.min(ih-s/2,Number(f.cy??ih/2)));return{sx:cx-s/2,sy:cy-s/2,s,cx,cy};
+}
+function renderFaces(){
+  ui.faces.innerHTML='';
+  if(!faces.length){ui.faces.innerHTML='<div class="face empty-face">Default wiseguy label</div>';ui.cropBox.classList.remove('show');return;}
+  faces.forEach((f,i)=>{
+    const d=document.createElement('div');d.className='face';d.title='Click to crop this label';
+    const cv=document.createElement('canvas');cv.width=120;cv.height=120;const c=cv.getContext('2d'),crop=getFaceCrop(f);
+    c.save();c.beginPath();c.arc(60,60,58,0,Math.PI*2);c.clip();c.drawImage(f.img,crop.sx,crop.sy,crop.s,crop.s,0,0,120,120);c.restore();
+    const b=document.createElement('button');b.type='button';b.textContent='×';b.title='Remove image';b.addEventListener('click',e=>{e.stopPropagation();URL.revokeObjectURL(f.url);faces.splice(i,1);if(selectedFace===i)selectedFace=-1;else if(selectedFace>i)selectedFace--;renderFaces();if(selectedFace>=0)selectFace(selectedFace);});
+    d.addEventListener('click',()=>selectFace(i));d.append(cv,b);ui.faces.appendChild(d);
+  });
+}
+const cropCtx=ui.cropCanvas.getContext('2d');
+function drawCropEditor(){
+  cropCtx.clearRect(0,0,480,480);cropCtx.fillStyle='#0f172a';cropCtx.fillRect(0,0,480,480);if(selectedFace<0||!faces[selectedFace])return;
+  const f=faces[selectedFace],img=f.img,iw=img.naturalWidth||img.width,ih=img.naturalHeight||img.height,scale=Math.min(480/iw,480/ih),dw=iw*scale,dh=ih*scale,ox=(480-dw)/2,oy=(480-dh)/2;cropCtx.drawImage(img,ox,oy,dw,dh);
+  const crop=getFaceCrop(f),sx=ox+crop.sx*scale,sy=oy+crop.sy*scale,ss=crop.s*scale,cx=sx+ss/2,cy=sy+ss/2,r=ss/2;
+  cropCtx.save();cropCtx.fillStyle='rgba(2,6,23,.58)';cropCtx.beginPath();cropCtx.rect(0,0,480,480);cropCtx.arc(cx,cy,r,0,Math.PI*2,true);cropCtx.fill('evenodd');cropCtx.restore();cropCtx.strokeStyle='#fff';cropCtx.lineWidth=4;cropCtx.beginPath();cropCtx.arc(cx,cy,r,0,Math.PI*2);cropCtx.stroke();
+}
+function selectFace(i){selectedFace=i;const f=faces[i];if(!f)return;if(f.cx==null){f.cx=f.img.naturalWidth/2;f.cy=f.img.naturalHeight/2;f.zoom=1;}ui.cropZoom.value=Math.round((f.zoom||1)*100);ui.cropZoomVal.textContent=ui.cropZoom.value+'%';ui.cropBox.classList.add('show');drawCropEditor();}
+function cropPointerToImage(ev){const f=faces[selectedFace],img=f.img,rect=ui.cropCanvas.getBoundingClientRect(),px=(ev.clientX-rect.left)*480/rect.width,py=(ev.clientY-rect.top)*480/rect.height,iw=img.naturalWidth||img.width,ih=img.naturalHeight||img.height,scale=Math.min(480/iw,480/ih),ox=(480-iw*scale)/2,oy=(480-ih*scale)/2;return{x:(px-ox)/scale,y:(py-oy)/scale};}
+ui.cropCanvas.addEventListener('pointerdown',ev=>{if(selectedFace<0)return;ui.cropCanvas.setPointerCapture(ev.pointerId);const p=cropPointerToImage(ev),f=faces[selectedFace];cropDrag={x:p.x,y:p.y,cx:f.cx,cy:f.cy};});
+ui.cropCanvas.addEventListener('pointermove',ev=>{if(!cropDrag||selectedFace<0)return;const f=faces[selectedFace],p=cropPointerToImage(ev),crop=getFaceCrop(f),iw=f.img.naturalWidth||f.img.width,ih=f.img.naturalHeight||f.img.height;f.cx=Math.max(crop.s/2,Math.min(iw-crop.s/2,cropDrag.cx+(p.x-cropDrag.x)));f.cy=Math.max(crop.s/2,Math.min(ih-crop.s/2,cropDrag.cy+(p.y-cropDrag.y)));drawCropEditor();renderFaces();});
+ui.cropCanvas.addEventListener('pointerup',()=>cropDrag=null);ui.cropCanvas.addEventListener('pointercancel',()=>cropDrag=null);
+ui.cropZoom.addEventListener('input',()=>{if(selectedFace<0)return;const f=faces[selectedFace];f.zoom=Number(ui.cropZoom.value)/100;ui.cropZoomVal.textContent=ui.cropZoom.value+'%';drawCropEditor();renderFaces();});
+ui.cropReset.addEventListener('click',()=>{if(selectedFace<0)return;const f=faces[selectedFace];f.cx=f.img.naturalWidth/2;f.cy=f.img.naturalHeight/2;f.zoom=1;ui.cropZoom.value=100;ui.cropZoomVal.textContent='100%';drawCropEditor();renderFaces();});
+ui.cropDone.addEventListener('click',()=>ui.cropBox.classList.remove('show'));
+ui.faceInput.addEventListener('change',async e=>{for(const file of [...e.target.files].slice(0,12)){const url=URL.createObjectURL(file),img=new Image();await new Promise((res,rej)=>{img.onload=res;img.onerror=rej;img.src=url}).catch(()=>null);if(img.complete&&img.naturalWidth)faces.push({url,img,cx:img.naturalWidth/2,cy:img.naturalHeight/2,zoom:1,name:file.name});else URL.revokeObjectURL(url);}e.target.value='';renderFaces();if(faces.length&&selectedFace<0)selectFace(0);});
+draw();
+})();
+</script>
+</body>
+</html>
